@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Next Volume</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: user box, actions, filters, then a grid of covers; "pick" and "duel" open as a panel above the grid. */
+:root {
+  --bg: #f4f5f7; --surface: #ffffff; --ink: #16181d; --muted: #5d6270; --line: #dde0e6;
+  --accent: #2f4bd1; --accent-ink: #ffffff; --good: #17703c; --warn: #9a5a00; --tone: rgba(22,24,29,.07);
+  --display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --body: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #121318; --surface: #1b1d24; --ink: #eceef3; --muted: #9aa0ae; --line: #2c2f39;
+  --accent: #8ea0ff; --accent-ink: #10121a; --good: #5fd08f; --warn: #f0b45a; --tone: rgba(236,238,243,.06); color-scheme: dark } }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body);
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 20px; }
+h1 { font: 800 clamp(30px, 6vw, 46px)/1 var(--display); margin: 0; letter-spacing: -.02em; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 62ch; }
+form.who { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+form.who input { width: 200px; font-size: 15px; padding: 9px 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+button, select, input { font: inherit; color: inherit; }
+.big { border: 0; border-radius: 999px; padding: 12px 22px; font-weight: 600; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+.big.alt { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.big:disabled { opacity: .5; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 12px 0; border-block: 1px solid var(--line); }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 2px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 11px; font-size: 13px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+select, input[type=search], input[type=text] { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 5px 8px; font-size: 13px; }
+input[type=search] { width: 150px; }
+.count { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.msg { color: var(--muted); }
+.msg.err { color: var(--warn); font-weight: 600; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px 14px; }
+.card { display: grid; gap: 6px; align-content: start; cursor: pointer; text-align: left; border: 0; padding: 0; background: none; }
+.cover { position: relative; aspect-ratio: 2/3; max-width: 100%; border-radius: 6px; overflow: hidden; background: var(--tone);
+  background-image: radial-gradient(var(--line) 1px, transparent 1.2px); background-size: 6px 6px; }
+.cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.badge { position: absolute; left: 6px; top: 6px; background: var(--surface); color: var(--ink); font-size: 11px; font-weight: 600; border-radius: 4px; padding: 1px 6px; font-variant-numeric: tabular-nums; }
+.badge.kind { top: auto; bottom: 6px; background: var(--accent); color: var(--accent-ink); }
+.badge.ongoing { top: auto; bottom: 6px; left: auto; right: 6px; background: var(--surface); color: var(--warn); }
+.badge.reading { left: auto; right: 6px; background: var(--good); color: var(--bg); }
+.t { font-weight: 600; font-size: 14px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.m { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 14px; }
+.panel h2 { font: 800 22px/1.1 var(--display); margin: 0; }
+.detail { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 18px; }
+.detail .cover { width: 140px; }
+.detail h3 { font: 800 clamp(22px, 4vw, 30px)/1.1 var(--display); margin: 0 0 4px; text-wrap: balance; }
+.detail p { margin: 8px 0 0; max-width: 65ch; }
+.why { color: var(--good); font-weight: 600; font-size: 13px; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.tag { font-size: 12px; background: var(--tone); border-radius: 4px; padding: 1px 7px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.small { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; color: var(--ink); text-decoration: none; }
+.duel { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: start; }
+.vs { font: 800 20px var(--display); color: var(--muted); align-self: center; }
+.duel .card { padding: 8px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); }
+.duel .card:hover { border-color: var(--accent); }
+.duel .cover { max-width: 180px; width: 100%; justify-self: center; }
+.duel .d { font-size: 12px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 520px) { .detail { grid-template-columns: minmax(0, 1fr); } .detail .cover { width: 120px; } .grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); } }
+@media (prefers-reduced-motion: no-preference) { .panel { animation: in .2s ease-out; } @keyframes in { from { transform: translateY(6px); opacity: .6 } } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Next Volume</h1>
+    <p class="sub" id="sub">Type an AniList username. It reads that person's anime and manga lists (they must be public) and helps pick what to start next from their Planning and unfinished entries.</p>
+  </header>
+  <form class="who" id="who">
+    <input type="text" id="user" placeholder="AniList username" aria-label="AniList username" autocomplete="off" required>
+    <button class="big" id="load">Load list</button>
+    <span class="msg" id="msg"></span>
+  </form>
+  <div class="actions">
+    <button class="big" id="pickBtn" disabled>Pick one for me</button>
+    <button class="big alt" id="duelBtn" disabled>This or that</button>
+  </div>
+  <section id="panel" class="panel" hidden></section>
+  <div class="filters">
+    <div class="group"><span class="label">Type</span>
+      <button class="chip" data-f="kind" data-v="anime">Anime</button>
+      <button class="chip" data-f="kind" data-v="manga">Manga</button>
+      <button class="chip" data-f="kind" data-v="novel">Novels</button></div>
+    <div class="group"><span class="label">Release</span>
+      <button class="chip" data-f="pub" data-v="done" title="Finished airing or publishing">Finished</button>
+      <button class="chip" data-f="pub" data-v="ongoing" title="Still airing or publishing, or on hiatus">Not finished</button>
+      <button class="chip" data-f="pub" data-v="soon" title="Not out yet">Not out yet</button></div>
+    <div class="group"><span class="label">From</span>
+      <button class="chip" data-f="src" data-v="PLANNING">Planning</button>
+      <button class="chip" data-f="src" data-v="STARTED" title="Watching, reading or paused">Started</button></div>
+    <div class="group"><span class="label">Length</span>
+      <button class="chip" data-f="len" data-v="s" title="Anime up to 13 episodes or a movie; manga up to 60 chapters; novels up to 3 volumes">Short</button>
+      <button class="chip" data-f="len" data-v="m" title="Anime 14–50 episodes; manga 61–200 chapters; novels 4–10 volumes">Medium</button>
+      <button class="chip" data-f="len" data-v="l" title="Anime over 50 episodes; manga over 200 chapters; novels over 10 volumes">Long</button></div>
+    <div class="group"><span class="label">Origin</span>
+      <button class="chip" data-f="org" data-v="JP">Japan</button>
+      <button class="chip" data-f="org" data-v="KR">Korea</button>
+      <button class="chip" data-f="org" data-v="CN">China</button></div>
+    <div class="group">
+      <select id="genre" aria-label="Genre"><option value="">Any genre</option></select>
+      <select id="sort" aria-label="Sort">
+        <option value="fit">Best for you</option><option value="avg">AniList score</option>
+        <option value="pop">Most popular</option><option value="short">Shortest first</option></select>
+      <input type="search" id="q" placeholder="Search" aria-label="Search titles"></div>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="grid" id="grid"></div>
+  <p class="m" id="foot"></p>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } },
+                set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} } };
+
+// --- AniList (public API, CORS open, no login). Both lists in one request.
+const FIELDS = `entries{ status score progress media{ id siteUrl type status format episodes chapters volumes
+  averageScore popularity genres countryOfOrigin title{romaji english} coverImage{large}
+  startDate{year} endDate{year} description(asHtml:false) tags{name rank isMediaSpoiler} } }`;
+const Q = `query($u:String){ anime:MediaListCollection(userName:$u,type:ANIME){lists{${FIELDS}}}
+  manga:MediaListCollection(userName:$u,type:MANGA){lists{${FIELDS}}} }`;
+
+async function fetchUser(name) {
+  const r = await fetch("https://graphql.anilist.co", { method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ query: Q, variables: { u: name } }) });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 429) throw new Error("AniList is rate limiting. Wait a minute and try again.");
+  if (j.errors?.length) throw new Error(/not found/i.test(j.errors[0].message) ? `No AniList user called "${name}".`
+    : /private/i.test(j.errors[0].message) ? `${name}'s list is private.` : j.errors[0].message);
+  if (!r.ok || !j.data) throw new Error(`AniList answered ${r.status}. Try again later.`);
+  const seen = new Set(), out = [];
+  for (const key of ["anime", "manga"]) for (const l of j.data[key]?.lists ?? []) for (const e of l.entries) {
+    const m = e.media; if (seen.has(m.id)) continue; seen.add(m.id); // custom lists repeat entries
+    out.push({ id: m.id, url: m.siteUrl, my: e.status, score: e.score, progress: e.progress,
+      kind: m.type === "ANIME" ? "anime" : m.format === "NOVEL" ? "novel" : "manga",
+      pub: m.status, format: m.format, country: m.countryOfOrigin, ep: m.episodes, ch: m.chapters, vol: m.volumes,
+      avg: m.averageScore, pop: m.popularity, title: m.title.english || m.title.romaji, romaji: m.title.romaji,
+      img: m.coverImage.large, years: [m.startDate.year, m.endDate.year], genres: m.genres,
+      tags: m.tags.filter(t => t.rank >= 60 && !t.isMediaSpoiler).map(t => t.name).slice(0, 6),
+      desc: (m.description || "").replace(/<[^>]+>|\(Source:[\s\S]*/g, "").trim().replace(/^([\s\S]{560}\S*)[\s\S]+$/, "$1…") });
+  }
+  return out;
+}
+
+// --- Taste: what this person completed and scored high vs. what they dropped or scored low, per genre and tag.
+let cands = [], W = {}, userName = "";
+const feat = d => [...d.genres, ...d.tags];
+const whyOf = d => feat(d).filter(f => W[f] > 0.05).sort((a, b) => W[b] - W[a]).slice(0, 3);
+function build(all) {
+  const rated = all.filter(d => ["COMPLETED", "REPEATING", "DROPPED"].includes(d.my));
+  const sc = rated.map(d => d.score).filter(s => s > 0);
+  const mean = sc.reduce((a, b) => a + b, 0) / (sc.length || 1);
+  const sd = Math.sqrt(sc.reduce((a, b) => a + (b - mean) ** 2, 0) / (sc.length || 1)) || 1;
+  W = {}; const N = {};
+  for (const d of rated) {
+    const v = (d.score > 0 ? (d.score - mean) / sd : 0) + (d.my === "DROPPED" ? -1.2 : 0.3);
+    for (const f of feat(d)) { W[f] = (W[f] || 0) + v; N[f] = (N[f] || 0) + 1 }
+  }
+  for (const f in W) W[f] /= N[f] + 2; // ponytail: shrink toward 0 so a tag seen once can't dominate
+  cands = all.filter(d => ["PLANNING", "CURRENT", "PAUSED"].includes(d.my) && d.pub !== "CANCELLED");
+  for (const d of cands) { const fs = feat(d).filter(f => f in W); d.fit = fs.length ? fs.reduce((a, f) => a + W[f], 0) / Math.sqrt(fs.length) : 0 }
+  const z = k => { const v = cands.map(x => x[k] ?? 0), m = v.reduce((a, b) => a + b, 0) / (v.length || 1),
+    s = Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length || 1)) || 1; return x => ((x[k] ?? m) - m) / s };
+  const zf = z("fit"), za = z("avg");
+  for (const d of cands) d.rank = 0.6 * zf(d) + 0.4 * za(d);
+  [...cands].sort((a, b) => a.rank - b.rank).forEach((d, i) => d.match = Math.round(100 * (i + 1) / cands.length));
+  return rated.length;
+}
+
+// --- Filters (remembered on this device)
+const DEF = { kind: ["anime", "manga", "novel"], pub: ["done"], src: ["PLANNING", "STARTED"], len: ["s", "m", "l"], org: ["JP", "KR", "CN"] };
+const saved = store.get("nv-filters", {});
+const on = Object.fromEntries(Object.entries(DEF).map(([k, v]) => [k, new Set(saved[k] ?? v)]));
+document.querySelectorAll(".chip").forEach(b => {
+  b.setAttribute("aria-pressed", on[b.dataset.f].has(b.dataset.v));
+  b.onclick = () => { const s = on[b.dataset.f], v = b.dataset.v; s.has(v) ? s.delete(v) : s.add(v);
+    b.setAttribute("aria-pressed", s.has(v));
+    store.set("nv-filters", Object.fromEntries(Object.entries(on).map(([k, s]) => [k, [...s]]))); render() };
+});
+["genre", "sort", "q"].forEach(id => $(id).oninput = render);
+
+const pubOf = d => d.pub === "FINISHED" ? "done" : d.pub === "NOT_YET_RELEASED" ? "soon" : "ongoing";
+const lenOf = d => d.kind === "anime" ? (d.format === "MOVIE" ? "s" : !d.ep ? (d.pub === "FINISHED" ? "m" : "l") : d.ep <= 13 ? "s" : d.ep <= 50 ? "m" : "l")
+  : d.kind === "novel" ? (!d.vol ? "m" : d.vol <= 3 ? "s" : d.vol <= 10 ? "m" : "l")
+  : (!d.ch ? (d.pub === "FINISHED" ? "m" : "l") : d.ch <= 60 ? "s" : d.ch <= 200 ? "m" : "l");
+const sizeOf = d => d.kind === "anime" ? (d.format === "MOVIE" ? 4 : (d.ep ?? 60) * 4) : d.kind === "novel" ? (d.vol ?? 30) * 20 : d.ch ?? 999;
+const hiddenKey = () => "nv-hidden-" + userName.toLowerCase();
+let hidden = new Set();
+
+function visible() {
+  const g = $("genre").value, q = $("q").value.trim().toLowerCase();
+  const list = cands.filter(d => !hidden.has(d.id) && on.kind.has(d.kind) && on.pub.has(pubOf(d))
+    && on.src.has(d.my === "PLANNING" ? "PLANNING" : "STARTED") && on.len.has(lenOf(d))
+    && on.org.has(["KR", "CN"].includes(d.country) ? d.country : "JP")
+    && (!g || d.genres.includes(g)) && (!q || (d.title + " " + d.romaji).toLowerCase().includes(q)));
+  const k = { fit: d => -d.rank, avg: d => -(d.avg ?? 0), pop: d => -d.pop, short: sizeOf }[$("sort").value];
+  return list.sort((a, b) => k(a) - k(b));
+}
+const unit = d => d.kind === "anime" ? (d.format === "MOVIE" ? "movie" : d.ep ? `${d.ep} ep` : "? ep")
+  : d.kind === "novel" && d.vol ? `${d.vol} vol` : d.ch ? `${d.ch} ch` : d.vol ? `${d.vol} vol` : "? ch";
+const KIND = { anime: "Anime", novel: "Novel" };
+const coverHtml = d => `<div class="cover">${d.img ? `<img src="${esc(d.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
+  <span class="badge">${d.match}% match</span>${KIND[d.kind] ? `<span class="badge kind">${KIND[d.kind]}</span>` : ""}
+  ${pubOf(d) !== "done" ? `<span class="badge ongoing">${pubOf(d) === "soon" ? "Soon" : "Ongoing"}</span>` : ""}
+  ${d.my !== "PLANNING" ? `<span class="badge reading">${d.progress ? (d.kind === "anime" ? "ep " : "ch ") + d.progress : "started"}</span>` : ""}</div>`;
+
+function render() {
+  const list = visible();
+  $("count").textContent = cands.length ? `${list.length} of ${cands.length}` : "";
+  $("pickBtn").disabled = $("duelBtn").disabled = !list.length;
+  $("grid").innerHTML = list.map(d => `<button class="card" data-id="${d.id}">${coverHtml(d)}
+    <span class="t">${esc(d.title)}</span><span class="m">${unit(d)} · ${d.avg ?? "–"}% · ${d.years[0] ?? ""}</span></button>`).join("")
+    || (cands.length ? `<p class="m">Nothing matches these filters.</p>` : "");
+  $("grid").querySelectorAll(".card").forEach(b => b.onclick = () => show(cands.find(d => d.id == b.dataset.id), "Your pick"));
+}
+
+function show(d, heading) {
+  const why = whyOf(d), fmt = { TV: "TV series", TV_SHORT: "TV short", MOVIE: "Movie", OVA: "OVA", ONA: "ONA", SPECIAL: "Special", NOVEL: "Light novel", ONE_SHOT: "One-shot", MANGA: "Manga" }[d.format] ?? d.format;
+  const pubTxt = { done: "finished", ongoing: d.kind === "anime" ? "still airing" : "still publishing", soon: "not out yet" }[pubOf(d)];
+  $("panel").hidden = false;
+  $("panel").innerHTML = `<h2>${esc(heading)}</h2><div class="detail">${coverHtml(d)}<div style="min-width:0">
+    <h3>${esc(d.title)}</h3><div class="m">${d.romaji !== d.title ? esc(d.romaji) + " · " : ""}${esc(fmt)} · ${unit(d)} · ${pubTxt} · ${d.years.filter(Boolean).join("–")} · AniList ${d.avg ?? "–"}%</div>
+    ${why.length ? `<div class="why">You tend to like: ${why.map(esc).join(", ")}</div>` : ""}
+    <div class="tags">${feat(d).map(f => `<span class="tag">${esc(f)}</span>`).join("")}</div>
+    <p>${esc(d.desc)}</p>
+    <div class="row" style="margin-top:12px"><a class="small" href="${esc(d.url)}" target="_blank" rel="noopener">Open on AniList</a>
+      <button class="small" id="again">Another one</button><button class="small" id="nope">Not for me</button>
+      <button class="small" id="close">Close</button></div></div></div>`;
+  $("again").onclick = pick;
+  $("nope").onclick = () => { hidden.add(d.id); store.set(hiddenKey(), [...hidden]); render(); pick() };
+  $("close").onclick = () => $("panel").hidden = true;
+  $("panel").scrollIntoView({ block: "nearest" });
+}
+
+// Pick: weighted toward the top of the current list, never the same twice in a row.
+let last = null;
+function pick() {
+  const list = visible().filter(d => d.id !== last).slice(0, 25);
+  if (!list.length) return;
+  const w = list.map((_, i) => 1 / (i + 3)), total = w.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total, i = 0; while ((r -= w[i]) > 0) i++;
+  last = list[i].id; show(list[i], "Start this next");
+}
+
+// This or that: knockout of 8 from the top of the current list.
+function duel() {
+  let pool = visible().slice(0, 16).sort(() => Math.random() - .5).slice(0, 8), next = [];
+  if (pool.length < 2) return pool[0] && show(pool[0], "Start this next");
+  const total = pool.length - 1; let done = 0;
+  const round = () => {
+    if (pool.length < 2) { next.push(...pool); pool = next; next = []; }
+    if (pool.length === 1) return show(pool[0], "You chose");
+    const [a, b] = pool.splice(0, 2);
+    $("panel").hidden = false;
+    $("panel").innerHTML = `<h2>Which one tonight?</h2><span class="m">Choice ${++done} of ${total}</span>
+      <div class="duel">${[a, b].map((d, i) => `${i ? `<span class="vs">or</span>` : ""}<button class="card" data-i="${i}">${coverHtml(d)}
+        <span class="t">${esc(d.title)}</span><span class="m">${unit(d)} · ${d.avg ?? "–"}%</span><span class="d">${esc(d.desc)}</span></button>`).join("")}</div>
+      <div class="row"><button class="small" id="close">Stop</button></div>`;
+    $("panel").querySelectorAll(".duel .card").forEach(c => c.onclick = () => { next.push(c.dataset.i === "0" ? a : b); round() });
+    $("close").onclick = () => $("panel").hidden = true;
+  };
+  round();
+}
+
+async function load(name) {
+  name = name.trim(); if (!name) return;
+  $("msg").className = "msg"; $("msg").textContent = "Loading…"; $("load").disabled = true;
+  try {
+    const all = await fetchUser(name);
+    userName = name; store.set("nv-user", name); location.hash = encodeURIComponent(name);
+    const rated = build(all);
+    hidden = new Set(store.get(hiddenKey(), []));
+    const g = $("genre").value;
+    $("genre").innerHTML = `<option value="">Any genre</option>` + [...new Set(cands.flatMap(d => d.genres))].sort().map(x => `<option>${esc(x)}</option>`).join("");
+    $("genre").value = g;
+    const n = k => cands.filter(d => d.kind === k).length;
+    $("msg").textContent = `${name}: ${n("anime")} anime, ${n("manga")} manga and ${n("novel")} novels to choose from.`;
+    $("foot").textContent = `Loaded live from AniList. "Best for you" learns from ${rated} finished or dropped entries.${hidden.size ? ` ${hidden.size} hidden on this device.` : ""}`;
+    $("panel").hidden = true; render();
+  } catch (e) {
+    $("msg").className = "msg err"; $("msg").textContent = e.message || "Couldn't reach AniList. Check your connection.";
+  } finally { $("load").disabled = false }
+}
+
+$("who").onsubmit = e => { e.preventDefault(); load($("user").value) };
+$("pickBtn").onclick = pick;
+$("duelBtn").onclick = duel;
+const start = decodeURIComponent(location.hash.slice(1)) || store.get("nv-user", "");
+if (start) { $("user").value = start; load(start) }
+</script>
+</body>
+</html>
